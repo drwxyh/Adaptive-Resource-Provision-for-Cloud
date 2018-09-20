@@ -1,4 +1,4 @@
-# Adaptive-Resource-Provison-for-Cloud
+# Adaptive-Resource-Provision-for-Cloud
 Online Bin Packing Algorithm Used for Cloud Resource Allocation  
 
 > Cloud Resource Allocation
