@@ -36,16 +36,13 @@ class VirtualMachine:
         self.category = self.get_category()
         self.pre_category = None
         self.current_pm_id = None
-        self.pre_pm_id = self.current_pm_id
+        self.pre_pm_id = None
 
     def update(self, system_time):
         # Update the demand of vm according to the system time and its category.
-        if system_time - self.start_time + 1 <= self.length:
-            self.pre_category = self.category
-            self.current_demand = self.demands[system_time - self.start_time]
-            self.category = self.get_category()
-        else:
-            pass
+        self.pre_category = self.category
+        self.current_demand = self.demands[system_time - self.start_time]
+        self.category = self.get_category()
 
     def get_category(self):
         # Determine this vm's category according to its current demand.
@@ -148,14 +145,12 @@ class PhysicalMachine:
         if item_num == 1 and l_cnt == 1:
             if total_demand < 2 / 3:
                 return 'ULLT'
-            else:
-                return 'L'
+            return 'L'
 
         if l_cnt == 1 and t_cnt == item_num - 1 and t_cnt >= 1:
             if total_demand < 2 / 3:
                 return 'ULLT'
-            else:
-                return 'LT'
+            return 'LT'
 
         if s_cnt == 1 and item_num == 1:
             return 'S'
@@ -169,8 +164,7 @@ class PhysicalMachine:
         if t_cnt == item_num and t_cnt >= 1:
             if total_demand < 2 / 3:
                 return 'UT'
-            else:
-                return 'T'
+            return 'T'
 
     def __str__(self):
         res = 'PhysicalMachine: \n - id:{} \n - capacity: {}\n - status:{}\n- utilization: {}'

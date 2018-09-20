@@ -21,11 +21,11 @@ def gen_data(num_vms, num_slots):
         for i in range(0, num_vms):
             row = next(f_csv)
             id, start_time, end_time, demand = row
-            start_time = (int(start_time) + math.ceil(random.uniform(0, 500))) % num_slots
-            end_time = min(start_time + math.ceil(random.normalvariate(300, 0.1)), 1000)
+            start_time = (int(start_time) + math.ceil(random.uniform(0, num_slots/2))) % num_slots
+            end_time = min(start_time + math.ceil(random.normalvariate(num_slots/20, 0.5)), num_slots)
 
-            down_demand = min(1.0, float(demand) * 10)
-            up_demand = min(1.0, float(demand) * 20)
+            down_demand = min(1.0, float(demand) * 5)
+            up_demand = min(1.0, float(demand) * 10)
             demands = list()
             length = end_time - start_time + 1
             for j in range(length):

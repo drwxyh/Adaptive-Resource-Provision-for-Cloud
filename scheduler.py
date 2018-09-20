@@ -53,7 +53,7 @@ class VMScheduler:
             pm.update()
             if not pm.category:
                 empty_pm_id.add(pm.id)
-                self.pm_set[pm.id] = PhysicalMachine(pm.id, num_slots=1000)
+                self.pm_set[pm.id] = PhysicalMachine(pm.id, 1000)
 
         for pm_id in empty_pm_id:
             self.active_pm_id.discard(pm_id)
@@ -73,8 +73,9 @@ class VMScheduler:
 
         for pm_id in empty_pm_id:
             self.active_pm_id.discard(pm_id)
-            self.idle_pm_id.discard(pm_id)
-            self.pm_set[pm_id] = PhysicalMachine(pm_id, num_slots=1000)
+            self.idle_pm_id.add(pm_id)
+            self.pm_set[pm_id] = PhysicalMachine(pm_id, 1000)
+
         for pm_id in self.active_pm_id:
             self.pm_set[pm_id].update()
 
@@ -83,14 +84,17 @@ class VMScheduler:
         # and discard it from vm_set. Notice that if we remove a VM from an PM， the number of VMs running on it
         # maybe decrease to zero, so we must check the state of PM in the following step.
         finished_vms = set()
+
         for vm in self.vm_set:
-            if system_time == vm.end_time:
+            if system_time >= vm.end_time:
                 pm_id = vm.current_pm_id
                 self.pm_set[pm_id].running_vms.discard(vm)
                 finished_vms.add(vm)
+
         for vm in finished_vms:
-            print('VM-{} finishes its work.'.format(vm.id))
+            # print('VM-{} finishes its work.'.format(vm.id))
             self.vm_set.remove(vm)
+
         for vm in self.vm_set:
             vm.update(system_time)
 
@@ -100,6 +104,7 @@ class VMScheduler:
         for vm in self.vm_new:
             self.vm_set.append(vm)
         self.vm_new = list()
+        print('{} VMs is on service.'.format(len(self.vm_set)))
 
     def divide(self, pm):
         # All T-items in a bin form several non-overlapping groups such that:
@@ -139,15 +144,15 @@ class VMScheduler:
         self.active_pm_id.add(pm_id)
         pm = self.pm_set[pm_id]
         if isinstance(vms, VirtualMachine):
-            vms.current_pm_id = pm_id
+            vms.current_pm_id = pm.id
             pm.running_vms.add(vms)
         else:
             for vm in vms:
-                vm.current_pm_id = pm_id
+                vm.current_pm_id = pm.id
                 pm.running_vms.add(vm)
         pm.update()
         self.pm_group_renew()
-        return pm_id
+        return pm.id
 
     def hot(self, pm):
         # If the total demand of VMs running on the PM is larger than its capacity, we call this PM hot.
@@ -181,8 +186,6 @@ class VMScheduler:
                 if pm.category == category:
                     self.pm_groups[category].add(pm)
             return res
-        else:
-            return None
 
     def move(self, vms, pm):
         # When we move VMs from its original PMs to the new PM, we should remove it from original PM's running set and
@@ -194,10 +197,11 @@ class VMScheduler:
                 if len(self.pm_set[pre_pm_id].running_vms) == 0:
                     self.active_pm_id.discard(pre_pm_id)
                     self.idle_pm_id.add(pre_pm_id)
-                    self.pm_set[pre_pm_id] = PhysicalMachine(pre_pm_id, num_slots=1000)
+                    self.pm_set[pre_pm_id] = PhysicalMachine(pre_pm_id, 1000)
             vms.current_pm_id = pm.id
             pm.running_vms.add(vms)
         else:
+
             for vm in vms:
                 pre_pm_id = vm.current_pm_id
                 if pre_pm_id is not None:
@@ -205,7 +209,7 @@ class VMScheduler:
                     if len(self.pm_set[pre_pm_id].running_vms) == 0:
                         self.active_pm_id.discard(pre_pm_id)
                         self.idle_pm_id.add(pre_pm_id)
-                        self.pm_set[pre_pm_id] = PhysicalMachine(pre_pm_id, num_slots=1000)
+                        self.pm_set[pre_pm_id] = PhysicalMachine(pre_pm_id, 1000)
                 vm.current_pm_id = pm.id
                 pm.running_vms.add(vm)
         pm.update()
@@ -234,6 +238,7 @@ class VMScheduler:
                     group_choice = self.divide(t)
                     g = group_choice.pop()
                     self.move(g, pm_b)
+                pm_b.update()
 
     def insert_s_item(self, vm_x):
         if self.__exist('S'):
@@ -250,7 +255,7 @@ class VMScheduler:
         self.active_pm_id.discard(pm_id)
         self.idle_pm_id.add(pm_id)
         # print('{} is released.'.format(pm_id))
-        self.pm_set[pm_id] = PhysicalMachine(pm_id, num_slots=1000)
+        self.pm_set[pm_id] = PhysicalMachine(pm_id, 1000)
         self.pm_group_renew()
 
     def adjust(self, pm_b):
@@ -258,22 +263,26 @@ class VMScheduler:
             while self.hot(pm_b):
                 g = pm_b.running_vms.pop()
                 self.fillwith(g)
+                pm_b.update()
             if pm_b.gap >= 1 / 3:
                 self.fill(pm_b)
 
     def insert(self):
-        for vm in self.vm_new:
-            print('VM-{} starts running now.'.format(vm.id))
-            if vm.category == 'B':
-                self.new(vm)
-            elif vm.category == 'L':
-                pm_id = self.new(vm)
-                pm = self.pm_set[pm_id]
-                self.fill(pm)
-            elif vm.category == 'S':
-                self.insert_s_item(vm)
-            else:
-                self.fillwith(vm)
+        if len(self.vm_new) == 0:
+            pass
+        else:
+            for vm in self.vm_new:
+                # print('VM-{} starts running now.'.format(vm.id))
+                if vm.category == 'B':
+                    self.new(vm)
+                elif vm.category == 'L':
+                    pm_id = self.new(vm)
+                    pm = self.pm_set[pm_id]
+                    self.fill(pm)
+                elif vm.category == 'S':
+                    self.insert_s_item(vm)
+                else:
+                    self.fillwith(vm)
 
     def __exist_s_item(self, pm, vm_x=None):
         num = 0
@@ -297,7 +306,9 @@ class VMScheduler:
             if vm_x.category == 'S':
                 s_set.discard(vm_x)
         if len(s_set) != 0:
-            return s_set.pop()
+            res = s_set.pop()
+            pm.running_vms.discard(res)
+            return res
 
     def __exist_l_item(self, pm, vm_x=None):
         num = 0
@@ -321,7 +332,9 @@ class VMScheduler:
             if vm_x.category == 'L':
                 l_set.discard(vm_x)
         if len(l_set) != 0:
-            return l_set.pop()
+            res = l_set.pop()
+            pm.running_vms.discard(res)
+            return res
 
     def change(self):
         for vm in self.vm_set:
@@ -407,6 +420,7 @@ class VMScheduler:
             elif pre == 'T' and cur == 'L':
                 if self.__exist_l_item(pm, vm):
                     vm_x = self.__get_l_item(pm, vm)
+                    pm.running_vms.discard(vm_x)
                     new_pm_id = self.new(vm_x)
                     self.fill(self.pm_set[new_pm_id])
                     self.adjust(pm)
@@ -414,6 +428,7 @@ class VMScheduler:
             elif pre == 'T' and cur == 'S':
                 if self.__exist_l_item(pm):
                     vm_x = self.__get_l_item(pm)
+                    pm.running_vms.discard(vm_x)
                     self.insert_s_item(vm)
                     self.fill(self.pm_set[vm_x.current_pm_id])
                 elif self.__exist('S', pm):
@@ -433,6 +448,7 @@ class VMScheduler:
                 else:
                     if self.hot(pm):
                         self.fillwith(vm)
+                        pm.running_vms.discard(vm)
                     else:
                         while pm.gap >= 1 / 3 and self.__exist('UT', pm):
                             pm_b = self.__get('UT', pm)

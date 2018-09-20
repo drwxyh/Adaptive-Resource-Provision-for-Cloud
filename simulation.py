@@ -12,7 +12,7 @@ from scheduler import VMScheduler
 
 if __name__ == "__main__":
     # Generate the input
-    num_vms = 10000
+    num_vms = 1000
     num_slots = 1000
     num_pms = num_vms
     vm_list = gen_data(num_vms, num_slots)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     vmm = VMScheduler(num_pms, num_slots)
 
-    for t in range(0, num_slots):
+    for t in range(num_slots + 1):
         print('The {}th slot.'.format(t))
         cur_vm_list = list()
         while not pq.empty():
@@ -33,9 +33,6 @@ if __name__ == "__main__":
             else:
                 pq.put(vm)
                 break
-
-        if len(cur_vm_list) == 0:
-            continue
 
         vmm.vm_new = cur_vm_list
         # Arrange the new coming VMs on suitable PMs.
@@ -50,3 +47,4 @@ if __name__ == "__main__":
         vmm.integrate_vm_set()
         # Update the category of PMs.
         vmm.pm_re_categorize()
+        vmm.pm_group_renew()
